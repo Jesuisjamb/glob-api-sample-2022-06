@@ -1,7 +1,7 @@
-const express = require('express')
+const express    = require('express')
 const bodyParser = require('body-parser');
-const app = express()
-const port = 8080
+const app        = express()
+const port       = 8080
 
 const usersList = [
     {
@@ -38,9 +38,9 @@ const netflixDB = [
 ]
 
 const authoMiddle = (req, res, next) => {
-    const userNumber = req.headers.usercode;
-    const profile    = usersList.find((usr) => usr.id == userNumber);
-    if(!profile.id) return res.status(404).json({'msg': 'Unauthorized User'});
+    const userNumber = req.headers.token;
+    const profile    = usersList.filter((usr) => ((usr.id == userNumber) && usr.valid));
+    if(profile.length < 1) return res.status(404).json({'msg': 'Unauthorized User'});
     req.profile = profile
     next()
 }
@@ -49,8 +49,8 @@ const findAll = () => {
     return netflixDB;
 }
 
-const findOne = (id) => {
-    const result = netflixDB.filter((mov) => mov.id == id);
+const findByYear = (year) => {
+    const result = netflixDB.filter((mov) => mov.year == year);
     return result;
 }
 
@@ -60,19 +60,25 @@ const addOne = (movieObj) => {
     return movieObj;
 }
 
+const checkYear = (value) => {
+    return value.match(/^(19|20)[0-9][0-9]/)
+}
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.get('/movies', authoMiddle, (req, res) => {
-    res.send(findAll());
+    res.json(findAll());
 });
 
-app.get('/movies/:id', authoMiddle, (req, res) => {
-    res.send(findOne(req.params.id));
+app.get('/movies/:year', authoMiddle, (req, res) => {
+    const isValidYear = checkYear(req.params.year);
+    if(!isValidYear) res.status(404).json({'msg':'Missing Correct Year Value'});
+    else res.json(findByYear(req.params.year));
 });
 
 app.post('/movies', authoMiddle, (req, res) => {
-    res.send(addOne(req.body));
+    res.json(addOne(req.body));
 });
 
 app.all('*', (req,res) => { 
